@@ -10,6 +10,10 @@ export default class ApplicationRoute extends Route {
   }
 
   model() {
-    return this.store.findAll('post');
+    return this.store.findAll('post', {
+      adapterOptions: {
+        realtime: true,
+      }
+    });
   }
 }

@@ -11,6 +11,13 @@ import type { SupabaseQueryBuilder } from '@supabase/supabase-js/dist/main/lib/S
 
 type ModelClass = any;
 
+interface AdapterOptions {
+  realtime?: boolean;
+}
+
+type SnapshotRecordArray<K extends keyof ModelRegistry> =
+  DS.SnapshotRecordArray<K> & { adapterOptions?: AdapterOptions };
+
 export default class SupabaseAdapter extends JSONAPIAdapter {
   @service declare supabase: SupabaseService;
 
@@ -92,11 +99,11 @@ export default class SupabaseAdapter extends JSONAPIAdapter {
     });
   }
 
-  findAll(
+  findAll<K extends keyof ModelRegistry>(
     _store: Store,
     type: ModelClass,
     _sinceToken: string,
-    _snapshotRecordArray: any
+    snapshotRecordArray: SnapshotRecordArray<K>
   ): RSVP.Promise<any> {
     return new RSVP.Promise((resolve, reject) => {
       this.buildRef(type.modelName)
@@ -108,6 +115,15 @@ export default class SupabaseAdapter extends JSONAPIAdapter {
             resolve(data);
           }
         });
+
+      if (snapshotRecordArray?.adapterOptions?.realtime) {
+        this.buildRef(type.modelName)
+          .on('*', (payload) => {
+            console.log('HIT', payload)
+            resolve(payload.new);
+          })
+          .subscribe();
+      }
     });
   }
 
@@ -115,7 +131,7 @@ export default class SupabaseAdapter extends JSONAPIAdapter {
     _store: Store,
     snapshot: any,
     _url: string,
-    relationship: any,
+    relationship: any
   ): RSVP.Promise<unknown> {
     return new RSVP.Promise((resolve, reject) => {
       this.buildRef(relationship.type)
